@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sapphire Панель</title>
+  <meta name="description" content="Панель настройки ботов Sapphire: статус, настройки серверов, ключи, снимки базы.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 29 12 16 30 3 12Z' fill='%235b7cfa'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="#/">💎 Sapphire <span>панель</span></a>
+    <nav id="nav"></nav>
+    <button id="theme" class="ghost" title="Тема">◐</button>
+  </header>
+  <main id="app"><p class="muted">Загрузка…</p></main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="dlg"><form method="dialog" id="dlg-body"></form></dialog>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
