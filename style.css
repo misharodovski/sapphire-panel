@@ -125,3 +125,25 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   h1 { font-size: 1.25rem; }
   .settings { grid-template-columns: 1fr; }
 }
+
+/* ── стафф ── */
+a.btn { display: inline-flex; align-items: center; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); color: var(--text); }
+a.btn:hover { border-color: var(--accent); text-decoration: none; }
+.staff-kpi { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); margin: 12px 0; }
+.kpi { font-size: 1.6rem; font-weight: 700; }
+.table-wrap { overflow-x: auto; padding: 0; }
+table.staff { width: 100%; border-collapse: collapse; font-size: .9rem; }
+table.staff th, table.staff td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+table.staff th a { color: var(--muted); }
+table.staff th a.on { color: var(--accent); font-weight: 600; }
+table.staff tbody tr { cursor: pointer; }
+table.staff tbody tr:hover { background: var(--panel-2); }
+.who { display: flex; gap: 8px; align-items: center; }
+.who img { border-radius: 50%; }
+.pill { font-size: .75rem; padding: 1px 6px; border-radius: 999px; background: var(--panel-2); }
+.pill.ok { color: var(--ok); }
+.meter { width: 90px; height: 6px; border-radius: 3px; background: var(--panel-2); display: inline-block; margin-right: 6px; vertical-align: middle; }
+.meter span { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.spark .spark-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.spark .spark-fill { fill: var(--accent); opacity: .15; stroke: none; }

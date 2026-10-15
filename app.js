@@ -365,7 +365,7 @@ async function viewGuild(name, gid) {
 
   page(`<p class="small"><a href="#/bot/${esc(name)}">← ${esc(name)}</a></p>
     <div class="row spread"><div class="row">${meta.icon ? `<img src="${esc(meta.icon)}" alt="" width="40" height="40" style="border-radius:10px">` : ""}<h1>${esc(meta.name || gid)}</h1></div>
-      <div class="row"><button id="tpl-save">⭳ В шаблон</button><button id="tpl-apply">⭱ Из шаблона</button><button id="compare">⇄ Сравнить</button></div></div>
+      <div class="row"><a class="btn" href="#/bot/${esc(name)}/g/${esc(gid)}/staff">🛡 Стафф</a><button id="tpl-save">⭳ В шаблон</button><button id="tpl-apply">⭱ Из шаблона</button><button id="compare">⇄ Сравнить</button></div></div>
     ${Object.entries(schema.groups).map(([g, title]) => {
       const items = schema.settings.filter((s) => s.group === g);
       return items.length ? `<h2>${esc(title)}</h2><div class="settings">${items.map((s) => `<div class="setting" data-key="${esc(s.key)}">${field(g === "modules" ? { ...s, label: modName(s) } : s)}</div>`).join("")}</div>` : "";
@@ -497,12 +497,69 @@ function viewSign() {
   if (drop) drop.onclick = async () => { if (await dialog("<h3>Удалить ключ из этого браузера?</h3>", { ok: "Удалить", danger: true })) { store.set("signkey", null); viewSign(); } };
 }
 
+// ── стафф сервера (бот выгружает guilds/<id>/staff.json раз в 6 часов: только числа, без текстов) ──
+const spark = (vals, w = 120, h = 28) => {
+  const v = (vals || []).map((x) => +x || 0);
+  if (v.length < 2 || !v.some(Boolean)) return `<span class="muted small">—</span>`;
+  const top = Math.max(...v), step = w / (v.length - 1);
+  const pts = v.map((x, i) => `${(i * step).toFixed(1)},${(h - 2 - (h - 4) * x / top).toFixed(1)}`).join(" ");
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">
+    <polyline points="0,${h} ${pts} ${w},${h}" class="spark-fill"/><polyline points="${pts}" class="spark-line"/></svg>`;
+};
+
+async function viewStaff(name, gid) {
+  setNav("home");
+  const base = `instances/${name}/guilds/${gid}`;
+  const [{ data }, { data: meta }] = await Promise.all([gh.json(`${base}/staff.json`, null), gh.json(`${base}/meta.json`, {})]);
+  const back = `<p class="small"><a href="#/bot/${esc(name)}/g/${esc(gid)}">← ${esc(meta.name || gid)}</a></p>`;
+  if (!data || !(data.rows || []).length) {
+    page(`${back}<div class="card empty">Бот ещё не выгрузил статистику стаффа (раз в 6 часов) — или стафф пока ничего не делал.</div>`);
+    return;
+  }
+  const cols = [["score", "Вклад"], ["apps", "Анкеты"], ["agree_pct", "Согласие с ИИ"], ["curation", "Посты NPC"],
+    ["cases", "Дела"], ["warns", "Варны"], ["decisions", "Решения"], ["messages", "Сообщения"]];
+  let sort = store.get("staffsort", "score");
+  const total = (k) => data.rows.reduce((a, r) => a + (+r[k] || 0), 0);
+  const draw = () => {
+    const rows = [...data.rows].sort((a, b) => (+b[sort] || 0) - (+a[sort] || 0));
+    const top = Math.max(1, ...rows.map((r) => r.score || 0));
+    page(`${back}
+      <div class="row spread"><h1>🛡 Стафф · ${esc(meta.name || gid)}</h1><span class="muted small">за ${data.days} дн. · обновлено ${ago(data.updated)}</span></div>
+      <div class="grid staff-kpi">
+        <div class="card"><div class="muted small">В стаффе</div><div class="kpi">${rows.length}</div></div>
+        <div class="card"><div class="muted small">На смене</div><div class="kpi">${rows.filter((r) => r.on_shift).length}</div></div>
+        <div class="card"><div class="muted small">Анкет проверено</div><div class="kpi">${total("apps")}</div></div>
+        <div class="card"><div class="muted small">Постов за NPC</div><div class="kpi">${total("curation")}</div></div>
+      </div>
+      <div class="card table-wrap"><table class="staff">
+        <thead><tr><th>#</th><th>Кто</th>${cols.map(([k, t]) => `<th><a href="#" data-sort="${k}" class="${k === sort ? "on" : ""}">${t}</a></th>`).join("")}<th>Актив</th></tr></thead>
+        <tbody>${rows.map((r, i) => `<tr data-uid="${esc(r.user_id)}">
+          <td>${i + 1}</td>
+          <td><div class="who">${r.avatar ? `<img src="${esc(r.avatar)}" alt="" width="28" height="28">` : ""}<div><b>${esc(r.name || r.user_id)}</b>${r.on_shift ? ` <span class="pill ok">на смене</span>` : ""}<div class="muted small">${esc(r.tier_label || "")} ${(r.badges || []).join(" ")}</div></div></div></td>
+          ${cols.map(([k]) => k === "score"
+            ? `<td><div class="meter"><span style="width:${Math.round(100 * (r.score || 0) / top)}%"></span></div><span class="small">${r.score || 0}</span></td>`
+            : `<td>${r[k] == null ? "—" : esc(r[k]) + (k === "agree_pct" ? " %" : "")}</td>`).join("")}
+          <td>${spark(r.series)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="muted small">Числа без содержимого: тексты анкет, причины наказаний и скрытые характеристики сюда не выгружаются.</p>`);
+    document.querySelectorAll("[data-sort]").forEach((a) => a.onclick = (e) => { e.preventDefault(); sort = a.dataset.sort; store.set("staffsort", sort); draw(); });
+    document.querySelectorAll("tr[data-uid]").forEach((tr) => tr.onclick = () => {
+      const r = data.rows.find((x) => x.user_id === tr.dataset.uid);
+      dialog(`<h3>${esc(r.name || r.user_id)}</h3><p class="muted small">${esc(r.tier_label || "")} · ID ${esc(r.user_id)}</p>
+        <dl class="kv">${cols.map(([k, t]) => `<dt>${t}</dt><dd>${r[k] == null ? "—" : esc(r[k])}</dd>`).join("")}
+        <dt>Значки</dt><dd>${(r.badges || []).join(" ") || "—"}</dd></dl>
+        <div style="margin-top:12px">${spark(r.series, 320, 60)}</div>`, { cancel: "" });
+    });
+  };
+  draw();
+}
+
 // ── маршруты ──
 async function route() {
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   if (parts[0] === "logout") { store.set("token", null); store.set("login", null); location.hash = "#/"; return; }
   if (!gh.token()) return viewLogin();
   try {
+    if (parts[0] === "bot" && parts[2] === "g" && parts[4] === "staff") return await viewStaff(parts[1], parts[3]);
     if (parts[0] === "bot" && parts[2] === "g") return await viewGuild(parts[1], parts[3]);
     if (parts[0] === "bot") return await viewBot(parts[1], parts[2]);
     if (parts[0] === "templates") return await viewTemplates();
